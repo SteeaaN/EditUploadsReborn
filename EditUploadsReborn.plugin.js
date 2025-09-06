@@ -4,7 +4,7 @@
  * @author SteaN
  * @description Edit images before uploading. Inspired by Qwerasd's EditUploads.
  * @source https://github.com/SteeaaN/EditUploadsReborn
- * @updateUrl https://github.com/SteeaaN/EditUploadsReborn/EditUploadsReborn.plugin.js
+ * @updateUrl https://github.com/SteeaaN/EditUploadsReborn/blob/main/EditUploadsReborn.plugin.js
  */
 
 module.exports = class EditUploadsReborn {
