@@ -1,6 +1,6 @@
 /**
  * @name EditUploadsReborn
- * @version 0.1.0
+ * @version 0.2.0
  * @author SteaN
  * @description Edit images before uploading. Inspired by Qwerasd's EditUploads.
  * @source https://github.com/SteeaaN/EditUploadsReborn
@@ -644,7 +644,7 @@ module.exports = class EditUploadsReborn {
             const btn = document.createElement("div");
             btn.className = "button_f7ecac edit-uploads-btn";
             btn.setAttribute("role", "button");
-            btn.setAttribute("aria-label", "Редактировать изображение");
+            btn.setAttribute("aria-label", "Edit image");
             btn.innerText = "🖌️";
             btn.style.cursor = "pointer";
             btn.style.display = "flex";
@@ -1233,7 +1233,6 @@ module.exports = class EditUploadsReborn {
                 cleanupAndClose();
             }
             if (e.code === "Enter" || e.key === "Enter") {
-                console.log('Нажат энтер')
                 e.preventDefault();
                 e.stopPropagation();
                 e.stopImmediatePropagation();
