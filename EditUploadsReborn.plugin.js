@@ -23,6 +23,12 @@ module.exports = class EditUploadsReborn {
     };
 
     start() {
+        this.settings = Object.assign(
+            {},
+            this.defaultSettings,
+            BdApi.Data.load("EditUploadsReborn", "settings") || {}
+        );
+
         this.icons = {
             rectangle: "▭",
             circle: "◯",
@@ -43,8 +49,8 @@ module.exports = class EditUploadsReborn {
                 category: 'main',
                 icon: this.icons.brush,
                 settings: {
-                    size: { type: 'range', min: 2, max: 150, value: 10 },
-                    color: { type: 'color', value: '#ff0000' }
+                    size: { type: 'range', min: 2, max: 150 },
+                    color: { type: 'color' }
                 },
                 initialize: () => {},
                 selected: function (canvas, ctx) {
@@ -109,8 +115,8 @@ module.exports = class EditUploadsReborn {
                 category: 'main',
                 icon: this.icons.arrow,
                 settings: {
-                    thickness: { type: 'range', min: 1, max: 150, value: 3 },
-                    color: { type: 'color', value: '#ffff00' }
+                    thickness: { type: 'range', min: 1, max: 150 },
+                    color: { type: 'color', }
                 },
                 initialize: function () {
                     this.imageCopy = document.createElement('canvas');
@@ -182,7 +188,7 @@ module.exports = class EditUploadsReborn {
                 category: 'main',
                 icon: this.icons.crop,
                 settings: {},
-                initialize: function (_, __, tools) {
+                initialize: function () {
                     this.imageCopy = document.createElement('canvas');
                     this.imageCopyCtx = this.imageCopy.getContext('2d');
                     this.greyed = document.createElement('canvas');
@@ -244,8 +250,8 @@ module.exports = class EditUploadsReborn {
                 category: 'shapes',
                 icon: this.icons.rectangle,
                 settings: {
-                    thickness: { type: 'range', min: 1, max: 150, value: 10 },
-                    color: { type: 'color', value: '#ff0000' }
+                    thickness: { type: 'range', min: 1, max: 150 },
+                    color: { type: 'color' }
                 },
                 initialize: function () {
                     this.imageCopy = document.createElement('canvas');
@@ -298,8 +304,8 @@ module.exports = class EditUploadsReborn {
                 category: 'shapes',
                 icon: this.icons.circle,
                 settings: {
-                    thickness: { type: 'range', min: 2, max: 150, value: 4 },
-                    color: { type: 'color', value: '#00ff00' }
+                    thickness: { type: 'range', min: 2, max: 150 },
+                    color: { type: 'color' }
                 },
                 initialize: function () {
                     this.imageCopy = document.createElement('canvas');
@@ -360,8 +366,8 @@ module.exports = class EditUploadsReborn {
                 category: 'blur',
                 icon: this.icons.blurBrush,
                 settings: {
-                    size: { type: 'range', min: 5, max: 250, value: 48 },
-                    amount: { type: 'range', min: 1, max: 20, value: 3 }
+                    size: { type: 'range', min: 5, max: 250 },
+                    amount: { type: 'range', min: 1, max: 20 }
                 },
                 initialize: function () {
                     this.blurred = document.createElement('canvas');
@@ -405,7 +411,7 @@ module.exports = class EditUploadsReborn {
                 category: 'blur',
                 icon: this.icons.blur,
                 settings: {
-                    amount: { type: 'range', min: 1, max: 20, value: 3 },
+                    amount: { type: 'range', min: 1, max: 20 },
                 },
                 initialize: function () {
                     this.imageCopy = document.createElement('canvas');
@@ -447,7 +453,7 @@ module.exports = class EditUploadsReborn {
                 category: 'blur',
                 icon: this.icons.inverseBlur,
                 settings: {
-                    amount: { type: 'range', min: 1, max: 20, value: 3 },
+                    amount: { type: 'range', min: 1, max: 20 },
                 },
                 initialize: function () {
                     this.imageCopy = document.createElement('canvas');
@@ -632,7 +638,6 @@ module.exports = class EditUploadsReborn {
         return panel;
     }
 
-
     injectButton(root) {
         root.querySelectorAll(".actionBarContainer_aa605f").forEach(container => {
             if (container.querySelector(".edit-uploads-btn")) return;
@@ -650,7 +655,7 @@ module.exports = class EditUploadsReborn {
             btn.onclick = e => {
                 e.stopPropagation();
                 const uploadContainer = container.closest(".uploadContainer_aa605f");
-                this.openEditModal(container, uploadContainer);
+                this.openEditModal(uploadContainer);
             };
             container.querySelector(".wrapper_f7ecac")?.appendChild(btn);
         });
@@ -753,8 +758,115 @@ module.exports = class EditUploadsReborn {
             canvas.style.height = canvas.height + 'px';
         }
     }
+    
+    async doSave(currentUpload, canvas, img, cleanupAndClose) {
+        try {
+            const merged = document.createElement('canvas');
+            merged.width = canvas.width;
+            merged.height = canvas.height;
+            const mctx = merged.getContext('2d');
+            mctx.drawImage(canvas, 0, 0);
 
-    async openEditModal(container, currentUpload) {
+            const currentInfo = this.getUploadInfo(currentUpload);
+            let originalMime = null;
+            if (currentInfo.src) {
+                try {
+                    const resp = await fetch(currentInfo.src);
+                    const b = await resp.blob();
+                    if (b && b.type && b.type.startsWith('image/')) originalMime = b.type;
+                } catch (e) {}
+            } else {
+                const dataMime = this.parseDataUrlMime(img.src);
+                if (dataMime && dataMime.startsWith('image/')) originalMime = dataMime;
+            }
+            const targetType = originalMime && originalMime.startsWith('image/') ? originalMime : 'image/png';
+            const blob = await new Promise(res => merged.toBlob(res, targetType));
+            const ext = this.getExtFromMime(targetType) || 'png';
+
+            let newFileName = currentInfo.filename ? currentInfo.filename : `edited.${ext}`;
+            if (currentInfo.filename) {
+                const parts = currentInfo.filename.split('.');
+                if (parts.length > 1) {
+                    parts[parts.length - 1] = ext;
+                    newFileName = parts.join('.');
+                }
+            }
+            const newFile = new File([blob], newFileName, { type: blob.type || targetType });
+
+            const allUploads = [...document.querySelectorAll(".uploadContainer_aa605f")];
+            const files = [];
+            const uploadsToRemove = [];
+            const skipped = [];
+
+            for (const upload of allUploads) {
+                const info = this.getUploadInfo(upload);
+
+                if (upload === currentUpload) {
+                    files.push(newFile);
+                    uploadsToRemove.push(upload);
+                    continue;
+                }
+
+                if (info.src) {
+                    try {
+                        const resp = await fetch(info.src);
+                        const b = await resp.blob();
+                        const filename = info.filename || this.guessFilenameFromUrl(info.src) || `file.${this.getExtFromMime(b.type) || 'bin'}`;
+                        files.push(new File([b], filename, { type: b.type || 'application/octet-stream' }));
+                        uploadsToRemove.push(upload);
+                        continue;
+                    } catch (e) {}
+                }
+
+                skipped.push(info.filename || this.guessFilenameFromUrl(info.src) || 'unknown');
+            }
+
+            for (const u of uploadsToRemove) {
+                const removeBtn = u.querySelector(".button_f7ecac.dangerous_f7ecac");
+                if (removeBtn) removeBtn.click();
+            }
+
+            await this.sleep(150);
+
+            const fileInput = [...document.querySelectorAll('input[type="file"]')].find(i => i.offsetParent !== null) ||
+                            document.querySelector('input[type="file"]');
+
+            if (fileInput && files.length) {
+                const dt = new DataTransfer();
+                for (const f of files) dt.items.add(f);
+                try {
+                    fileInput.files = dt.files;
+                    fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+                } catch (e) {
+                    const pasteDT = new DataTransfer();
+                    for (const f of files) pasteDT.items.add(f);
+                    const pasteEvent = new ClipboardEvent("paste", { clipboardData: pasteDT, bubbles: true, cancelable: true });
+                    const inputEl = document.querySelector("div[role=textbox][contenteditable=true]");
+                    if (inputEl) inputEl.dispatchEvent(pasteEvent);
+                    else throw new Error("No target to insert files");
+                }
+            } else if (files.length) {
+                const pasteDT = new DataTransfer();
+                for (const f of files) pasteDT.items.add(f);
+                const pasteEvent = new ClipboardEvent("paste", { clipboardData: pasteDT, bubbles: true, cancelable: true });
+                const inputEl = document.querySelector("div[role=textbox][contenteditable=true]");
+                if (inputEl) inputEl.dispatchEvent(pasteEvent);
+                else throw new Error("No target to insert files");
+            }
+
+            if (skipped.length) {
+                BdApi.alert("Attention", "Upload order may change");
+            }
+
+            cleanupAndClose();
+        } catch (err) {
+            console.error(err);
+            BdApi.alert("Error", "An error occurred during processing.");
+        }
+    }
+
+
+    async openEditModal(currentUpload) {
         const img = currentUpload?.querySelector("img");
         if (!img) return;
 
@@ -1105,6 +1217,7 @@ module.exports = class EditUploadsReborn {
         redoBtn.onclick = async () => { await redo(); };
 
         const onKeyDown = async (e) => {
+            console.log(e.code)
             if (e.code === 'KeyZ' && e.ctrlKey && !e.altKey) {
                 e.preventDefault();
                 await undo();
@@ -1115,8 +1228,18 @@ module.exports = class EditUploadsReborn {
                 await redo();
                 return;
             }
+            if (e.code === "Escape" || e.key === "Escape") {
+                e.preventDefault();
+                cleanupAndClose();
+            }
+            if (e.code === "Enter" || e.key === "Enter") {
+                console.log('Нажат энтер')
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+            }
         };
-        window.addEventListener('keydown', onKeyDown);
+        window.addEventListener('keydown', onKeyDown, true);
 
         const actions = document.createElement('div');
         actions.style.display = 'flex';
@@ -1133,123 +1256,12 @@ module.exports = class EditUploadsReborn {
         const saveBtn = document.createElement('button');
         saveBtn.innerText = "💾 Save";
         saveBtn.style.padding = '8px 12px';
-        saveBtn.onclick = async () => {
-            try {
-                const merged = document.createElement('canvas');
-                merged.width = canvas.width;
-                merged.height = canvas.height;
-                const mctx = merged.getContext('2d');
-                mctx.drawImage(canvas, 0, 0);
-
-                const currentInfo = this.getUploadInfo(currentUpload);
-                let originalMime = null;
-                if (currentInfo.src) {
-                    try {
-                        const resp = await fetch(currentInfo.src);
-                        const b = await resp.blob();
-                        if (b && b.type && b.type.startsWith('image/')) originalMime = b.type;
-                    } catch (e) {}
-                } else {
-                    const dataMime = this.parseDataUrlMime(img.src);
-                    if (dataMime && dataMime.startsWith('image/')) originalMime = dataMime;
-                }
-                const targetType = originalMime && originalMime.startsWith('image/') ? originalMime : 'image/png';
-                const blob = await new Promise(res => merged.toBlob(res, targetType));
-                const ext = this.getExtFromMime(targetType) || 'png';
-
-                let newFileName = currentInfo.filename ? currentInfo.filename : `edited.${ext}`;
-                if (currentInfo.filename) {
-                    const parts = currentInfo.filename.split('.');
-                    if (parts.length > 1) {
-                        parts[parts.length - 1] = ext;
-                        newFileName = parts.join('.');
-                    }
-                }
-                const newFile = new File([blob], newFileName, { type: blob.type || targetType });
-
-                const allUploads = [...document.querySelectorAll(".uploadContainer_aa605f")];
-                const files = [];
-                const uploadsToRemove = [];
-                const skipped = [];
-
-                for (const upload of allUploads) {
-                    const info = this.getUploadInfo(upload);
-
-                    if (upload === currentUpload) {
-                        files.push(newFile);
-                        uploadsToRemove.push(upload);
-                        continue;
-                    }
-
-                    if (info.src) {
-                        try {
-                            const resp = await fetch(info.src);
-                            const b = await resp.blob();
-                            const filename = info.filename || this.guessFilenameFromUrl(info.src) || `file.${this.getExtFromMime(b.type) || 'bin'}`;
-                            files.push(new File([b], filename, { type: b.type || 'application/octet-stream' }));
-                            uploadsToRemove.push(upload);
-                            continue;
-                        } catch (e) {}
-                    }
-
-                    skipped.push(info.filename || this.guessFilenameFromUrl(info.src) || 'unknown');
-                }
-
-                for (const u of uploadsToRemove) {
-                    const removeBtn = u.querySelector(".button_f7ecac.dangerous_f7ecac");
-                    if (removeBtn) removeBtn.click();
-                }
-
-                await this.sleep(150);
-
-                const fileInput = [...document.querySelectorAll('input[type="file"]')].find(i => i.offsetParent !== null) ||
-                                  document.querySelector('input[type="file"]');
-
-                if (fileInput && files.length) {
-                    const dt = new DataTransfer();
-                    for (const f of files) dt.items.add(f);
-                    try {
-                        fileInput.files = dt.files;
-                        fileInput.dispatchEvent(new Event('change', { bubbles: true }));
-                    } catch (e) {
-                        const pasteDT = new DataTransfer();
-                        for (const f of files) pasteDT.items.add(f);
-                        const pasteEvent = new ClipboardEvent("paste", { clipboardData: pasteDT, bubbles: true, cancelable: true });
-                        const inputEl = document.querySelector("div[role=textbox][contenteditable=true]");
-                        if (inputEl) inputEl.dispatchEvent(pasteEvent);
-                        else throw new Error("No target to insert files");
-                    }
-                } else if (files.length) {
-                    const pasteDT = new DataTransfer();
-                    for (const f of files) pasteDT.items.add(f);
-                    const pasteEvent = new ClipboardEvent("paste", { clipboardData: pasteDT, bubbles: true, cancelable: true });
-                    const inputEl = document.querySelector("div[role=textbox][contenteditable=true]");
-                    if (inputEl) inputEl.dispatchEvent(pasteEvent);
-                    else throw new Error("No target to insert files");
-                }
-
-                if (skipped.length) {
-                    BdApi.alert("Attention", "Upload order may change");
-                }
-
-                cleanupAndClose();
-            } catch (err) {
-                console.error(err);
-                BdApi.alert("Error", "An error occurred during processing.");
-            }
-        };
+        saveBtn.onclick = async () => await this.doSave(currentUpload, canvas, img, cleanupAndClose);
 
         const cancelBtn = document.createElement('button');
         cancelBtn.innerText = "❌ Cancel";
         cancelBtn.style.padding = '8px 12px';
         cancelBtn.onclick = () => cleanupAndClose();
-
-        document.addEventListener("keydown", (e) => {
-            if (e.key === "Escape" || e.code === "Escape" || e.keyCode === 27) {
-                e.preventDefault();
-                cleanupAndClose();
-            }
-        });
 
         const rightActions = document.createElement('div');
         rightActions.style.display = 'flex';
@@ -1269,7 +1281,7 @@ module.exports = class EditUploadsReborn {
                 canvas.removeEventListener('mousedown', onMouseDown);
                 window.removeEventListener('mousemove', onMouseMove);
                 window.removeEventListener('mouseup', onMouseUp);
-                window.removeEventListener('keydown', onKeyDown);
+                window.removeEventListener('keydown', onKeyDown, true);
             } catch (e) {}
             try { document.body.removeChild(modal); } catch (e) {}
         };
