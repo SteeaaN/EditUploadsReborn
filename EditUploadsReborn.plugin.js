@@ -1,6 +1,6 @@
 /**
  * @name EditUploadsReborn
- * @version 0.2.0
+ * @version 0.2.1
  * @author SteaN
  * @description Edit images before uploading. Inspired by Qwerasd's EditUploads.
  * @source https://github.com/SteeaaN/EditUploadsReborn
@@ -49,14 +49,14 @@ module.exports = class EditUploadsReborn {
                 category: 'main',
                 icon: this.icons.brush,
                 settings: {
-                    size: { type: 'range', min: 2, max: 150 },
+                    size: { type: 'range', min: 1, max: 150 },
                     color: { type: 'color' }
                 },
                 initialize: () => {},
                 selected: function (canvas, ctx) {
                     ctx.globalCompositeOperation = 'source-over';
                     ctx.strokeStyle = this.settings.color.value;
-                    ctx.lineWidth = Math.max(1, this.settings.size.value * (canvas.width / parseInt(canvas.style.width || canvas.width)));
+                    ctx.lineWidth = Math.max(1, this.settings.size.value);
                     ctx.lineJoin = "round";
                     ctx.lineCap = "round";
                 },
@@ -91,7 +91,7 @@ module.exports = class EditUploadsReborn {
                     ctx.lineJoin = "round";
                     ctx.lineCap = "round";
                     ctx.strokeStyle = this.settings.color.value;
-                    ctx.lineWidth = Math.max(1, this.settings.thickness.value * (canvas.width / parseInt(canvas.style.width || canvas.width)));
+                    ctx.lineWidth = Math.max(1, this.settings.thickness.value);
                     this.imageCopy.width = canvas.width;
                     this.imageCopy.height = canvas.height;
                     this.imageCopyCtx.drawImage(canvas, 0, 0);
@@ -127,7 +127,7 @@ module.exports = class EditUploadsReborn {
                     ctx.lineJoin = "round";
                     ctx.lineCap = "round";
                     ctx.strokeStyle = this.settings.color.value;
-                    ctx.lineWidth = Math.max(1, this.settings.thickness.value * (canvas.width / parseInt(canvas.style.width || canvas.width)));
+                    ctx.lineWidth = Math.max(1, this.settings.thickness.value);
                     this.imageCopy.width = canvas.width;
                     this.imageCopy.height = canvas.height;
                     this.imageCopyCtx.drawImage(canvas, 0, 0);
@@ -259,7 +259,7 @@ module.exports = class EditUploadsReborn {
                 },
                 selected: function (canvas, ctx) {
                     ctx.globalCompositeOperation = 'source-over';
-                    ctx.lineWidth = Math.max(1, this.settings.thickness.value * (canvas.width / parseInt(canvas.style.width || canvas.width)));
+                    ctx.lineWidth = Math.max(1, this.settings.thickness.value);
                     ctx.lineJoin = "round";
                     ctx.lineCap = "round";
                     ctx.strokeStyle = this.settings.color.value;
@@ -304,7 +304,7 @@ module.exports = class EditUploadsReborn {
                 category: 'shapes',
                 icon: this.icons.circle,
                 settings: {
-                    thickness: { type: 'range', min: 2, max: 150 },
+                    thickness: { type: 'range', min: 1, max: 150 },
                     color: { type: 'color' }
                 },
                 initialize: function () {
@@ -313,7 +313,7 @@ module.exports = class EditUploadsReborn {
                 },
                 selected: function (canvas, ctx) {
                     ctx.globalCompositeOperation = 'source-over';
-                    ctx.lineWidth = Math.max(1, this.settings.thickness.value * (canvas.width / parseInt(canvas.style.width || canvas.width)));
+                    ctx.lineWidth = Math.max(1, this.settings.thickness.value);
                     ctx.lineJoin = "round";
                     ctx.lineCap = "round";
                     ctx.strokeStyle = this.settings.color.value;
